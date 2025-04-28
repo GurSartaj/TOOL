@@ -617,121 +617,130 @@
     }
 
     /**
-     * Reset all inputs to defaults and recalculate scores and costs
-     */
-    function clearForm() {
-      // Uncheck all checkboxes
-      document.querySelectorAll('.score-item[type="checkbox"]').forEach(cb => cb.checked = false);
-      // Reset dropdowns including weeks, GP, vertical
-      document.getElementById('weeks').selectedIndex = 0;
-      document.querySelectorAll('select.score-item:not(.addon-multiplier)').forEach(sel => sel.value = '0');
-      document.getElementById('gp').value = '';
-      document.getElementById('vertical').value = '';
-      // Reset any addon multipliers to default
-      document.querySelectorAll('select.addon-multiplier').forEach(sel => {
-        // Reset to the configured default value
-        sel.value = sel.dataset.default;
-      });
-      // Hide and clear any multi-select subcategory lists
-      document.querySelectorAll('select[multiple]').forEach(sel => {
-        sel.selectedIndex = -1;
-        sel.parentElement.style.display = 'none';
-      });
-      // Re-run calculations with reset state
+   * Reset all inputs to defaults and recalculate scores and costs
+   */
+  function clearForm() {
+    // Uncheck all checkboxes
+    document.querySelectorAll('.score-item[type="checkbox"]').forEach(cb => cb.checked = false);
+    // Reset dropdowns including weeks, GP, vertical
+    document.getElementById('weeks').selectedIndex = 0;
+    document.querySelectorAll('select.score-item:not(.addon-multiplier)').forEach(sel => sel.value = '0');
+    document.getElementById('gp').value = '';
+    document.getElementById('vertical').value = '';
+    // Reset any addon multipliers to default
+    document.querySelectorAll('select.addon-multiplier').forEach(sel => {
+      sel.value = sel.dataset.default;
+    });
+    // Hide and clear any multi-select subcategory lists
+    document.querySelectorAll('select[multiple]').forEach(sel => {
+      sel.selectedIndex = -1;
+      sel.parentElement.style.display = 'none';
+    });
+    // Re-run calculations with reset state
+    calculateTotal();
+    calculateCosts();
+  }
+
+  // Initialize form and attach event listeners once page DOM is loaded
+  document.addEventListener('DOMContentLoaded', () => {
+    buildForm();           // Generate the complexity form
+    populateRanges();      // Fill numeric dropdowns
+    calculateTotal();      // Initial score calculation (zero)
+    calculateCosts();      // Initial cost calculation (zero)
+
+    // Recalculate on any form change
+    document.getElementById('complexityForm').addEventListener('change', () => {
       calculateTotal();
       calculateCosts();
+    });
+
+    // Also recalculate when weeks, GP or vertical change
+    ['weeks','gp','vertical'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        calculateTotal();
+        calculateCosts();
+      });
+    });
+
+    // Attach clear button handler
+    document.getElementById('clearBtn').addEventListener('click', clearForm);
+
+    // Change theme when user selects a new option
+    document.getElementById('themeSelect').addEventListener('change', e => {
+      const th = e.target.value;
+      document.documentElement.setAttribute('data-theme', th);
+      document.documentElement.classList.toggle('dark', th === 'dark');
+    });
+
+    // Bind Submit here
+    document.getElementById('submitBtn').addEventListener('click', onSubmit);
+  });
+
+  // ── 1) Your Apps Script Web App URL ──
+  const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exec';
+
+  // ── 2) Build the payload from the form fields ──
+  function buildPayload() {
+    const payload = {
+      'IR Number':          document.getElementById('irNumber').value || '',
+      'Date':               document.getElementById('irDate').value   || '',
+      'Weeks':              document.getElementById('weeks').value   || '',
+      'GP Threshold':       document.getElementById('gp').value      || '',
+      'Vertical':           document.getElementById('vertical').value|| '',
+      'Initial Score':      document.getElementById('totalScore').innerText   || '',
+      'Salesforce Score':   document.getElementById('salesforceScore').innerText || '',
+      'Potential Opp Cost': document.getElementById('costTotal').innerText || ''
+    };
+
+    // Dynamically grab every generated checkbox/select
+    document.querySelectorAll('.score-item').forEach(el => {
+      let label, value;
+      if (el.type === 'checkbox') {
+        label = el.closest('label').querySelector('span').innerText.trim();
+        value = el.checked ? (parseFloat(el.dataset.weight) || 1) : 0;
+      } else {
+        const wrap = el.closest('div');
+        label = wrap.querySelector('label').innerText.trim();
+        value = el.selectedOptions[0].text;
+      }
+      payload[label] = value;
+    });
+
+    return payload;
+  }
+
+  // ── 3) Send it as a “simple” POST (no Content-Type header!) ──
+  async function submitToGoogle(payload) {
+    console.log('📤 Sending payload', payload);
+    const resp = await fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)  // simple POST avoids preflight
+    });
+    console.log('📨 Got', resp.status);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    console.log('📦 JSON', json);
+    if (json.status !== 'OK') throw new Error(json.error || 'Unknown');
+  }
+
+  // ── 4) Main submit handler ──
+  async function onSubmit() {
+    console.log('👉 onSubmit fired');
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerText = 'Submitting…';
+    try {
+      await submitToGoogle(buildPayload());
+      alert('✅ Submission saved!');
+      clearForm();
+    } catch (err) {
+      console.error('Submit failed:', err);
+      alert('❌ Submission failed: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'Submit';
     }
-
-    // Initialize form and attach event listeners once page DOM is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-      buildForm();           // Generate the complexity form
-      populateRanges();      // Fill numeric dropdowns
-      calculateTotal();      // Initial score calculation (zero)
-      calculateCosts();      // Initial cost calculation (zero)
-      // Recalculate on any form change
-      document.getElementById('complexityForm').addEventListener('change', () => {
-        calculateTotal(); calculateCosts();
-      });
-      // Also recalculate when weeks, GP or vertical change
-      ['weeks','gp','vertical'].forEach(id => {
-        document.getElementById(id).addEventListener('change', () => {
-          calculateTotal(); calculateCosts();
-        });
-      });
-      // Attach clear button handler
-      document.getElementById('clearBtn').addEventListener('click', clearForm);
-      // Change theme when user selects a new option
-      document.getElementById('themeSelect').addEventListener('change', e => {
-        const th = e.target.value;
-        document.documentElement.setAttribute('data-theme', th);
-        document.documentElement.classList.toggle('dark', th === 'dark');
-      });
-
-	// ── 1) Your Apps Script Web App URL ──
-	const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exec';
-	
-	    function buildPayload() {
-	    const payload = {
-	      'IR Number':          document.getElementById('irNumber').value || '',
-	      'Date':               document.getElementById('irDate').value || '',
-	      'Weeks':              document.getElementById('weeks').value || '',
-	      'GP Threshold':       document.getElementById('gp').value || '',
-	      'Vertical':           document.getElementById('vertical').value || '',
-	      'Initial Score':      document.getElementById('totalScore').innerText || '',
-	      'Salesforce Score':   document.getElementById('salesforceScore').innerText || '',
-	      'Potential Opp Cost': document.getElementById('costTotal').innerText || ''
-	    };
-	    document.querySelectorAll('.score-item').forEach(el => {
-	      let label, value;
-	      if (el.type === 'checkbox') {
-	        label = el.closest('label').querySelector('span').innerText.trim();
-	        value = el.checked ? (parseFloat(el.dataset.weight) || 1) : 0;
-	      } else {
-	        const wrap = el.closest('div');
-	        label = wrap.querySelector('label').innerText.trim();
-	        value = el.selectedOptions[0].text;
-	      }
-	      payload[label] = value;
-	    });
-	    return payload;
-	  }
-	
-	  async function submitToGoogle(payload) {
-	    console.log('📤 Sending payload', payload);
-	    const resp = await fetch(GOOGLE_SHEET_URL, {
-	      method: 'POST',
-	      body: JSON.stringify(payload)  // no headers → simple POST
-	    });
-	    console.log('📨 Got', resp.status);
-	    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-	    const json = await resp.json();
-	    console.log('📦 JSON', json);
-	    if (json.status !== 'OK') throw new Error(json.error || 'Unknown');
-	  }
-	
-	  async function onSubmit() {
-	    console.log('👉 onSubmit fired');
-	    const btn = document.getElementById('submitBtn');
-	    btn.disabled = true;
-	    btn.innerText = 'Submitting…';
-	    try {
-	      await submitToGoogle(buildPayload());
-	      alert('✅ Submission saved!');
-	      clearForm();
-	    } catch (err) {
-	      console.error('Submit failed:', err);
-	      alert('❌ Submission failed: ' + err.message);
-	    } finally {
-	      btn.disabled = false;
-	      btn.innerText = 'Submit';
-	    }
-	  }
-	
-	  document.addEventListener('DOMContentLoaded', () => {
-	    console.log('📌 Binding submit handler');
-	    document.getElementById('submitBtn').addEventListener('click', onSubmit);
-	  });	    
-	
+  }
 	
 	// CSV download functionality
 	document.getElementById('downloadCsv').addEventListener('click', () => {
