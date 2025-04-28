@@ -682,7 +682,7 @@
 	  };
 	
 	  // 2) Dynamically grab every .score-item (checkbox or select)
-	  document.querySelectorAll('.score-item').forEach(el => {
+	document.querySelectorAll('.score-item').forEach(el => {
 	    let label, value;
 	
 	    if (el.type === 'checkbox') {
@@ -704,23 +704,21 @@
 	}
 
 	  // Send payload to Google Sheets via Apps Script
-	  async function submitToGoogle(payload) {
-		const resp = await fetch(GOOGLE_SHEET_URL, {
-		  method: 'POST',
-		  headers: { 'Content-Type': 'application/json' },
-		  body: JSON.stringify(payload)
-		});
-		// Throws on HTTP 4xx/5xx
-		if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-		const json = await resp.json();
-		if (json.status !== 'OK') {
-		  throw new Error(json.error || 'Unknown error');
+	async function submitToGoogle(payload) {
+		  const resp = await fetch(GOOGLE_SHEET_URL, {
+		    method: 'POST',
+		    // no headers → defaults to text/plain, avoids preflight
+		    body: JSON.stringify(payload)
+		  });
+		  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+		  const json = await resp.json();
+		  if (json.status !== 'OK') throw new Error(json.error||'Unknown');
 		}
 		return true;
 	  }
 
 	  // Main submit handler
-	  async function onSubmit() {
+	async function onSubmit() {
 		const payload = buildPayload();
 		let okGoogle = false;
 
@@ -750,8 +748,7 @@
 	  }
 
 	  // Wire up the button
-	  document.getElementById('submitBtn')
-			  .addEventListener('click', onSubmit);	
+	document.getElementById('submitBtn').addEventListener('click', onSubmit);	
 	
 	
 	// CSV download functionality
