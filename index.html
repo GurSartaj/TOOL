@@ -666,89 +666,72 @@
         document.documentElement.setAttribute('data-theme', th);
         document.documentElement.classList.toggle('dark', th === 'dark');
       });
-    	// URL of your deployed Apps Script Web App
-	const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exec';
-	function buildPayload() {
-	  // 1) Core fields with real IDs
-	  const payload = {
-	    'IR Number':          document.getElementById('irNumber').value,
-	    'Date':               document.getElementById('irDate').value,
-	    'Weeks':              Number(document.getElementById('weeks').value) || 0,
-	    'GP Threshold':       document.getElementById('gp').value,
-	    'Vertical':           document.getElementById('vertical').value,
-	    'Initial Score':      Number(document.getElementById('totalScore').innerText) || 0,
-	    'Salesforce Score':   Number(document.getElementById('salesforceScore').innerText) || 0,
-	    'Potential Opp Cost': Number(document.getElementById('costTotal').innerText) || 0
-	  };
+
+	  // ── 1) Your Apps Script Web App URL ──
+	  const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exe';
 	
-	  // 2) Dynamically grab every .score-item (checkbox or select)
-	document.querySelectorAll('.score-item').forEach(el => {
-	    let label, value;
+	  // ── 2) Build the payload from real IDs + all .score-items ──
+	  function buildPayload() {
+	    const payload = {
+	      'IR Number':          document.getElementById('irNumber').value,
+	      'Date':               document.getElementById('irDate').value,
+	      'Weeks':              Number(document.getElementById('weeks').value) || 0,
+	      'GP Threshold':       document.getElementById('gp').value,
+	      'Vertical':           document.getElementById('vertical').value,
+	      'Initial Score':      Number(document.getElementById('totalScore').innerText) || 0,
+	      'Salesforce Score':   Number(document.getElementById('salesforceScore').innerText) || 0,
+	      'Potential Opp Cost': Number(document.getElementById('costTotal').innerText) || 0
+	    };
 	
-	    if (el.type === 'checkbox') {
-	      // label is the adjacent <span>
-	      label = el.closest('label').querySelector('span').innerText.trim();
-	      value = el.checked ? (parseFloat(el.dataset.weight) || 1) : 0;
-	    } else {
-	      // label is the <label> inside the same wrapper <div>
-	      const wrap = el.closest('div');
-	      label = wrap.querySelector('label').innerText.trim();
-	      value = el.selectedOptions[0].text;
+	    // Dynamically grab every checkbox/select you generated
+	    document.querySelectorAll('.score-item').forEach(el => {
+	      let label, value;
+	      if (el.type === 'checkbox') {
+	        label = el.closest('label').querySelector('span').innerText.trim();
+	        value = el.checked ? (parseFloat(el.dataset.weight) || 1) : 0;
+	      } else {
+	        const wrap = el.closest('div');
+	        label = wrap.querySelector('label').innerText.trim();
+	        value = el.selectedOptions[0].text;
+	      }
+	      payload[label] = value;
+	    });
+	
+	    return payload;
+	  }
+	
+	  // ── 3) Send it as a “simple” POST (no Content-Type header!) ──
+	  async function submitToGoogle(payload) {
+	    const resp = await fetch(GOOGLE_SHEET_URL, {
+	      method: 'POST',
+	      body: JSON.stringify(payload)          // text/plain precludes preflight
+	    });
+	    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+	    const json = await resp.json();
+	    if (json.status !== 'OK') throw new Error(json.error || 'Unknown');
+	  }
+	
+	  // ── 4) Hook up your Submit button ──
+	  async function onSubmit() {
+	    const btn = document.getElementById('submitBtn');
+	    btn.disabled = true;
+	    btn.innerText = 'Submitting…';
+	
+	    try {
+	      const payload = buildPayload();
+	      console.log('📤 Payload:', payload);
+	      await submitToGoogle(payload);
+	      alert('✅ Submission saved to Google Sheets!');
+	      clearForm();
+	    } catch (err) {
+	      console.error('Submit failed:', err);
+	      alert('❌ Submission failed: ' + err.message);
+	    } finally {
+	      btn.disabled = false;
+	      btn.innerText = 'Submit';
 	    }
-	
-	    // Add it to our payload keyed by the exact header label
-	    payload[label] = value;
-	  });
-	
-	  return payload;
-	}
-
-	  // Send payload to Google Sheets via Apps Script
-	async function submitToGoogle(payload) {
-		  const resp = await fetch(GOOGLE_SHEET_URL, {
-		    method: 'POST',
-		    // no headers → defaults to text/plain, avoids preflight
-		    body: JSON.stringify(payload)
-		  });
-		  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-		  const json = await resp.json();
-		  if (json.status !== 'OK') throw new Error(json.error||'Unknown');
-		}
-		return true;
 	  }
-
-	  // Main submit handler
-	async function onSubmit() {
-		const payload = buildPayload();
-		let okGoogle = false;
-
-		// Disable button to prevent double submits
-		const btn = document.getElementById('submitBtn');
-		btn.disabled = true;
-		btn.innerText = 'Submitting…';
-
-		try {
-		  // 1) Send to Google Sheets
-		  await submitToGoogle(payload);
-		  okGoogle = true;
-
-		  // TODO: Later we’ll also send to Smartsheet here
-
-		  // 2) Notify user and clear form
-		  alert('✅ Submission saved to Google Sheets!');
-		  clearForm();
-		} catch (err) {
-		  console.error('Submit error:', err);
-		  alert('❌ Submission failed: ' + err.message);
-		} finally {
-		  // Re-enable button
-		  btn.disabled = false;
-		  btn.innerText = 'Submit';
-		}
-	  }
-
-	  // Wire up the button
-	document.getElementById('submitBtn').addEventListener('click', onSubmit);	
+	  document.getElementById('submitBtn').addEventListener('click', onSubmit);	    
 	
 	
 	// CSV download functionality
