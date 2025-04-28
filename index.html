@@ -666,88 +666,42 @@
         document.documentElement.setAttribute('data-theme', th);
         document.documentElement.classList.toggle('dark', th === 'dark');
       });
-    
-
-	  // URL of your deployed Apps Script Web App
-	  const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exec';
-
-	  // Gather all form values into a payload object
-	  function buildPayload() {
-		const payload = {
-		  irNumber:                         document.getElementById('irNumber').value,
-		  date:                              document.getElementById('date').value,
-		  weeks:                             +document.getElementById('weeks').value || 0,
-		  gpThreshold:                       document.getElementById('gpThreshold').value,
-		  vertical:                          document.getElementById('vertical').value,
-		  initialScore:                      +document.getElementById('initialScore').innerText || 0,
-		  salesforceScore:                   +document.getElementById('salesforceScore').innerText || 0,
-		  potentialOppCost:                  +document.getElementById('potentialOppCost').innerText || 0,
-		  termsAndConditionsReview:          document.getElementById('termsAndConditionsReview').value,
-		  contractRedline:                   document.getElementById('contractRedline').value,
-		  nda:                                document.getElementById('nda').value,
-		  bidBondPerformanceBond:            document.getElementById('bidBondPerformanceBond').value,
-		  finance:                            document.getElementById('finance').value,
-		  insurance:                          document.getElementById('insurance').value,
-		  infoSecurity:                       document.getElementById('infoSecurity').value,
-		  teamingAgreement:                   document.getElementById('teamingAgreement').value,
-		  supplierEnablement:                 document.getElementById('supplierEnablement').value,
-		  sustainabilityHR:                   document.getElementById('sustainabilityHR').value,
-		  servicesPricing:                    document.getElementById('servicesPricing').value,
-		  sowDocRequired:                     document.getElementById('sowDocRequired').value,
-		  isRegionalManagerSaleBDM:           document.getElementById('isRegionalManagerSaleBDM').value,
-		  subcontractorPartner:               document.getElementById('subcontractorPartner').value,
-		  globalResponseComplexity:           document.getElementById('globalResponseComplexity').value,
-		  projectImplementationPlanTimeline: document.getElementById('projectImplementationPlanTimeline').value,
-		  training:                           document.getElementById('training').value,
-		  applicationServices:                document.getElementById('applicationServices').value,
-		  consultingServices:                 document.getElementById('consultingServices').value,
-		  infrastructureServices:             document.getElementById('infrastructureServices').value,
-		  labATCServices:                     document.getElementById('labATCServices').value,
-		  strategicStaffingServices:          document.getElementById('strategicStaffingServices').value,
-		  integrationCenterXICServices:       document.getElementById('integrationCenterXICServices').value,
-		  softwareAssetManagement:            document.getElementById('softwareAssetManagement').value,
-		  smartnetMaintenance:                document.getElementById('smartnetMaintenance').value,
-		  serviceNow:                         document.getElementById('serviceNow').value,
-		  supplyChainStagingIntegrationServices: document.getElementById('supplyChainStagingIntegrationServices').value,
-		  infraServicesMultiSiteDeliveryServices: document.getElementById('infraServicesMultiSiteDeliveryServices').value,
-		  hardwareVAR:                        document.getElementById('hardwareVAR').value,
-		  softwareVAR:                        document.getElementById('softwareVAR').value,
-		  bom:                                document.getElementById('bom').value,
-		  loe:                                +document.getElementById('loe').value || 0,
-		  technicalNarrative:                 document.getElementById('technicalNarrative').value,
-		  technicalQuestionnaire:             document.getElementById('technicalQuestionnaire').value,
-		  tdeTeamInvolvement:                 document.getElementById('tdeTeamInvolvement').value,
-		  wbs:                                document.getElementById('wbs').value,
-		  automationOrchestration:            document.getElementById('automationOrchestration').value,
-		  cloud:                              document.getElementById('cloud').value,
-		  dataCenter:                         document.getElementById('dataCenter').value,
-		  digitalWorkspace:                   document.getElementById('digitalWorkspace').value,
-		  environmentalSocialGovernanceESG:   document.getElementById('environmentalSocialGovernanceESG').value,
-		  mobility:                           document.getElementById('mobility').value,
-		  networking:                         document.getElementById('networking').value,
-		  securityTransformation:             document.getElementById('securityTransformation').value,
-		  referencesContactInfoCustName:      document.getElementById('referencesContactInfoCustName').value,
-		  pastPerformanceCaseStudies:         document.getElementById('pastPerformanceCaseStudies').value,
-		  pastPerformanceQuestionnaire:       document.getElementById('pastPerformanceQuestionnaire').value,
-		  formsNonLegal:                      document.getElementById('formsNonLegal').value,
-		  resumes:                            document.getElementById('resumes').value,
-		  questionnaireNonTechnical:          document.getElementById('questionnaireNonTechnical').value,
-		  nonStandardSubmissionReqSEWPHardCopiesDifficultPortal: document.getElementById('nonStandardSubmissionReqSEWPHardCopiesDifficultPortal').value,
-		  executiveSummary:                   document.getElementById('executiveSummary').value,
-		  oemCertificationMatrix:             document.getElementById('oemCertificationMatrix').value,
-		  createNewOrganizationalChart:       document.getElementById('createNewOrganizationalChart').value,
-		  customerPricingTemplateFormat:      document.getElementById('customerPricingTemplateFormat').value,
-		  coverLetter:                        document.getElementById('coverLetter').value,
-		  hardwareQuote:                      document.getElementById('hardwareQuote').value,
-		  pricingQuestionnaire:               document.getElementById('pricingQuestionnaire').value,
-		  accountManagerEngagement:           document.getElementById('accountManagerEngagement').value,
-		  openToCloseTime:                    +document.getElementById('openToCloseTime').value || 0,
-		  proposalManagerLevelOfEffort:        +document.getElementById('proposalManagerLevelOfEffort').value || 0,
-		  clarificationAndBafodifficulty:     document.getElementById('clarificationAndBafodifficulty').value
-		};
-
-		return payload;
-	  }
+    	// URL of your deployed Apps Script Web App
+	const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exec';
+	function buildPayload() {
+	  // 1) Core fields with real IDs
+	  const payload = {
+	    'IR Number':          document.getElementById('irNumber').value,
+	    'Date':               document.getElementById('irDate').value,
+	    'Weeks':              Number(document.getElementById('weeks').value) || 0,
+	    'GP Threshold':       document.getElementById('gp').value,
+	    'Vertical':           document.getElementById('vertical').value,
+	    'Initial Score':      Number(document.getElementById('totalScore').innerText) || 0,
+	    'Salesforce Score':   Number(document.getElementById('salesforceScore').innerText) || 0,
+	    'Potential Opp Cost': Number(document.getElementById('costTotal').innerText) || 0
+	  };
+	
+	  // 2) Dynamically grab every .score-item (checkbox or select)
+	  document.querySelectorAll('.score-item').forEach(el => {
+	    let label, value;
+	
+	    if (el.type === 'checkbox') {
+	      // label is the adjacent <span>
+	      label = el.closest('label').querySelector('span').innerText.trim();
+	      value = el.checked ? (parseFloat(el.dataset.weight) || 1) : 0;
+	    } else {
+	      // label is the <label> inside the same wrapper <div>
+	      const wrap = el.closest('div');
+	      label = wrap.querySelector('label').innerText.trim();
+	      value = el.selectedOptions[0].text;
+	    }
+	
+	    // Add it to our payload keyed by the exact header label
+	    payload[label] = value;
+	  });
+	
+	  return payload;
+	}
 
 	  // Send payload to Google Sheets via Apps Script
 	  async function submitToGoogle(payload) {
