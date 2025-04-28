@@ -168,7 +168,7 @@
       Export to Excel
     </button>
 	<!-- ADD: Submit button -->
-	<button id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded mt-2">
+	<button type="button" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded mt-2">
 	  Submit
 	</button>
   </div>
@@ -668,77 +668,55 @@
       });
 
 	// ── 1) Your Apps Script Web App URL ──
-	const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exe';
+	const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exec';
 	
-	function buildPayload() {
-	  // 1) Core, always-present fields
-	  const payload = {
-	    'IR Number':          document.getElementById('irNumber').value || '',
-	    'Date':               document.getElementById('irDate').value || '',
-	    'Weeks':              document.getElementById('weeks').value || '',
-	    'GP Threshold':       document.getElementById('gp').value || '',
-	    'Vertical':           document.getElementById('vertical').value || '',
-	    'Initial Score':      document.getElementById('totalScore').innerText || '',
-	    'Salesforce Score':   document.getElementById('salesforceScore').innerText || '',
-	    'Potential Opp Cost': document.getElementById('costTotal').innerText || ''
-	  };
+	    function buildPayload() {
+	    const payload = {
+	      'IR Number':          document.getElementById('irNumber').value || '',
+	      'Date':               document.getElementById('irDate').value || '',
+	      'Weeks':              document.getElementById('weeks').value || '',
+	      'GP Threshold':       document.getElementById('gp').value || '',
+	      'Vertical':           document.getElementById('vertical').value || '',
+	      'Initial Score':      document.getElementById('totalScore').innerText || '',
+	      'Salesforce Score':   document.getElementById('salesforceScore').innerText || '',
+	      'Potential Opp Cost': document.getElementById('costTotal').innerText || ''
+	    };
+	    document.querySelectorAll('.score-item').forEach(el => {
+	      let label, value;
+	      if (el.type === 'checkbox') {
+	        label = el.closest('label').querySelector('span').innerText.trim();
+	        value = el.checked ? (parseFloat(el.dataset.weight) || 1) : 0;
+	      } else {
+	        const wrap = el.closest('div');
+	        label = wrap.querySelector('label').innerText.trim();
+	        value = el.selectedOptions[0].text;
+	      }
+	      payload[label] = value;
+	    });
+	    return payload;
+	  }
 	
-	  // 2) All your dynamically-generated .score-item inputs
-	  document.querySelectorAll('.score-item').forEach(el => {
-	    let label, value;
-	
-	    if (el.type === 'checkbox') {
-	      // label = the adjacent <span> text
-	      label = el.closest('label')
-	                .querySelector('span')
-	                .innerText
-	                .trim();
-	      // value = numeric weight if checked, else 0
-	      value = el.checked 
-	        ? (parseFloat(el.dataset.weight) || 1) 
-	        : 0;
-	    } else {
-	      // for selects:
-	      // label = the <label> in the same wrapper <div>
-	      const wrap = el.closest('div');
-	      label = wrap
-	                .querySelector('label')
-	                .innerText
-	                .trim();
-	      // value = the option’s displayed text
-	      value = el.selectedOptions[0].text;
-	    }
-	
-	    // 3) Stick it on the payload using exactly that header text
-	    payload[label] = value;
-	  });
-	
-	  return payload;
-	}
-
-	
-	  // ── 3) Send it as a “simple” POST (no Content-Type header!) ──
 	  async function submitToGoogle(payload) {
+	    console.log('📤 Sending payload', payload);
 	    const resp = await fetch(GOOGLE_SHEET_URL, {
 	      method: 'POST',
-	      body: JSON.stringify(payload)          // text/plain precludes preflight
+	      body: JSON.stringify(payload)  // no headers → simple POST
 	    });
+	    console.log('📨 Got', resp.status);
 	    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 	    const json = await resp.json();
+	    console.log('📦 JSON', json);
 	    if (json.status !== 'OK') throw new Error(json.error || 'Unknown');
 	  }
 	
-	  // ── 4) Hook up your Submit button ──
 	  async function onSubmit() {
+	    console.log('👉 onSubmit fired');
 	    const btn = document.getElementById('submitBtn');
 	    btn.disabled = true;
 	    btn.innerText = 'Submitting…';
-	
 	    try {
-	      const payload = buildPayload();
-	      console.log('📤 Payload:', payload);
-	      await submitToGoogle(payload);
-	      alert('✅ Submission saved to Google Sheets!');
+	      await submitToGoogle(buildPayload());
+	      alert('✅ Submission saved!');
 	      clearForm();
 	    } catch (err) {
 	      console.error('Submit failed:', err);
@@ -748,7 +726,11 @@
 	      btn.innerText = 'Submit';
 	    }
 	  }
-	  document.getElementById('submitBtn').addEventListener('click', onSubmit);	    
+	
+	  document.addEventListener('DOMContentLoaded', () => {
+	    console.log('📌 Binding submit handler');
+	    document.getElementById('submitBtn').addEventListener('click', onSubmit);
+	  });	    
 	
 	
 	// CSV download functionality
