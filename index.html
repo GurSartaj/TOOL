@@ -667,38 +667,55 @@
         document.documentElement.classList.toggle('dark', th === 'dark');
       });
 
-	  // ── 1) Your Apps Script Web App URL ──
-	  const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exe';
+	// ── 1) Your Apps Script Web App URL ──
+	const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby-_DJyyyuHmwGEpoQCsfez0rzX3_W5PrUxTlNTCC0HfYxdbfRGsJ4Ygfqcgp5gmsnS/exe';
 	
-	  // ── 2) Build the payload from real IDs + all .score-items ──
-	  function buildPayload() {
-	    const payload = {
-	      'IR Number':          document.getElementById('irNumber').value,
-	      'Date':               document.getElementById('irDate').value,
-	      'Weeks':              Number(document.getElementById('weeks').value) || 0,
-	      'GP Threshold':       document.getElementById('gp').value,
-	      'Vertical':           document.getElementById('vertical').value,
-	      'Initial Score':      Number(document.getElementById('totalScore').innerText) || 0,
-	      'Salesforce Score':   Number(document.getElementById('salesforceScore').innerText) || 0,
-	      'Potential Opp Cost': Number(document.getElementById('costTotal').innerText) || 0
-	    };
+	function buildPayload() {
+	  // 1) Core, always-present fields
+	  const payload = {
+	    'IR Number':          document.getElementById('irNumber').value || '',
+	    'Date':               document.getElementById('irDate').value || '',
+	    'Weeks':              document.getElementById('weeks').value || '',
+	    'GP Threshold':       document.getElementById('gp').value || '',
+	    'Vertical':           document.getElementById('vertical').value || '',
+	    'Initial Score':      document.getElementById('totalScore').innerText || '',
+	    'Salesforce Score':   document.getElementById('salesforceScore').innerText || '',
+	    'Potential Opp Cost': document.getElementById('costTotal').innerText || ''
+	  };
 	
-	    // Dynamically grab every checkbox/select you generated
-	    document.querySelectorAll('.score-item').forEach(el => {
-	      let label, value;
-	      if (el.type === 'checkbox') {
-	        label = el.closest('label').querySelector('span').innerText.trim();
-	        value = el.checked ? (parseFloat(el.dataset.weight) || 1) : 0;
-	      } else {
-	        const wrap = el.closest('div');
-	        label = wrap.querySelector('label').innerText.trim();
-	        value = el.selectedOptions[0].text;
-	      }
-	      payload[label] = value;
-	    });
+	  // 2) All your dynamically-generated .score-item inputs
+	  document.querySelectorAll('.score-item').forEach(el => {
+	    let label, value;
 	
-	    return payload;
-	  }
+	    if (el.type === 'checkbox') {
+	      // label = the adjacent <span> text
+	      label = el.closest('label')
+	                .querySelector('span')
+	                .innerText
+	                .trim();
+	      // value = numeric weight if checked, else 0
+	      value = el.checked 
+	        ? (parseFloat(el.dataset.weight) || 1) 
+	        : 0;
+	    } else {
+	      // for selects:
+	      // label = the <label> in the same wrapper <div>
+	      const wrap = el.closest('div');
+	      label = wrap
+	                .querySelector('label')
+	                .innerText
+	                .trim();
+	      // value = the option’s displayed text
+	      value = el.selectedOptions[0].text;
+	    }
+	
+	    // 3) Stick it on the payload using exactly that header text
+	    payload[label] = value;
+	  });
+	
+	  return payload;
+	}
+
 	
 	  // ── 3) Send it as a “simple” POST (no Content-Type header!) ──
 	  async function submitToGoogle(payload) {
