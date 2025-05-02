@@ -177,22 +177,26 @@
 
   <!-- Main Form Area -->
   <div class="form-container text-sm max-w-4xl mx-auto mt-12 mb-12">
-    <!-- IR Number & Date inputs -->
-    <div class="flex justify-center space-x-4 mb-6">
-      <div class="flex flex-col">
-        <label for="irNumber" class="mb-1 font-semibold">IR Number</label>
-        <input type="text" id="irNumber" name="irNumber" class="p-2 border rounded" />
-        <button type="button" id="loadBtn"
-			class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded">
-		Modify Existing IR
-	</button>
-	<div id="fetchStatus" class="mt-1 text-sm italic text-gray-600">
-     </div>
-     <div class="flex flex-col">
-        <label for="irDate" class="mb-1 font-semibold">Date</label>
-        <input type="date" id="irDate" name="irDate" class="p-2 border rounded" />
-      </div>
-  </div>
+	<!-- IR Number & Date inputs -->
+	<div class="flex justify-center space-x-4 mb-6">
+	  <!-- IR wrapper -->
+	  <div class="flex flex-col">
+		<label for="irNumber" class="mb-1 font-semibold">IR Number</label>
+		<input type="text" id="irNumber" name="irNumber" class="p-2 border rounded" />
+		<button type="button" id="loadBtn"
+				class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded">
+		    Modify Existing IR
+		</button>
+		<div id="fetchStatus" class="mt-1 text-sm italic text-gray-600"></div>
+	  </div>
+
+	  <!-- Date wrapper -->
+	  <div class="flex flex-col">
+		<label for="irDate" class="mb-1 font-semibold">Date</label>
+		<input type="date" id="irDate" name="irDate" class="p-2 border rounded" />
+	  </div>
+	</div>
+
     <!-- Title Section -->
     <div class="mb-6 p-4 bg-white dark:bg-gray-700 rounded border border-[var(--panel-border)]">
 		<h1 class="text-2xl font-bold text-center m-0">Proposal Complexity & Opportunity Cost</h1>
@@ -776,46 +780,54 @@ function loadRecord() {
 }
 
 function handleLoad(data) {
-  // … your population logic …
+  const fetchStatus = document.getElementById('fetchStatus');
+  const loadBtn     = document.getElementById('loadBtn');
+  const irVal       = document.getElementById('irNumber').value;
 
-  // Add this at the very end of handleLoad:
+  // Clear any old status
+  fetchStatus.innerText = '';
+
   if (data.result === 'notfound') {
-    fetchStatus.innerText = `IR ${document.getElementById('irNumber').value} not found.`;
+    // Not found
+    fetchStatus.innerText = `IR ${irVal} not found.`;
   } else {
-    fetchStatus.innerText = `Successfully loaded IR ${document.getElementById('irNumber').value}!`;
+    // 1) Prefill top-level fields
+    document.getElementById('irDate').value              = data['Date']               || '';
+    document.getElementById('weeks').value               = data['Weeks']              || '';
+    document.getElementById('gp').value                  = data['GP Threshold']       || '';
+    document.getElementById('vertical').value            = data['Vertical']           || '';
+    document.getElementById('totalScore').innerText      = data['Initial Score']      || '0';
+    document.getElementById('salesforceScore').innerText = data['Salesforce Score']   || '0';
+    document.getElementById('costTotal').innerText       = data['Potential Opp Cost'] || '0';
+
+    // 2) Prefill all score-items
+    document.querySelectorAll('.score-item').forEach(el => {
+      let label = '';
+      if (el.type === 'checkbox') {
+        label = el.closest('label').querySelector('span').innerText.trim();
+        el.checked = parseFloat(data[label] || 0) > 0;
+      } else {
+        const wrap   = el.closest('div');
+        label        = wrap.querySelector('label').innerText.trim();
+        const stored = data[label] + '';
+        Array.from(el.options).forEach(opt => {
+          if (opt.text === stored) opt.selected = true;
+        });
+      }
+    });
+
+    // 3) Re-run calculations
+    calculateTotal();
+    calculateCosts();
+
+    // 4) Success status
+    fetchStatus.innerText = `Successfully loaded IR ${irVal}!`;
   }
+
+  // Re-enable the button
   loadBtn.disabled = false;
 }
 
-  // 1) Prefill the top‐level fields
-  document.getElementById('irDate').value              = data['Date']              || '';
-  document.getElementById('weeks').value               = data['Weeks']             || '';
-  document.getElementById('gp').value                  = data['GP Threshold']      || '';
-  document.getElementById('vertical').value            = data['Vertical']          || '';
-  document.getElementById('totalScore').innerText      = data['Initial Score']     || '0';
-  document.getElementById('salesforceScore').innerText = data['Salesforce Score']  || '0';
-  document.getElementById('costTotal').innerText       = data['Potential Opp Cost']|| '0';
-
-  // 2) For each dynamically‐generated score item, match by label
-  document.querySelectorAll('.score-item').forEach(el => {
-    let label;
-    if (el.type === 'checkbox') {
-      label = el.closest('label').querySelector('span').innerText.trim();
-      el.checked = parseFloat(data[label]||0) > 0;
-    } else {
-      const wrap   = el.closest('div');
-      label        = wrap.querySelector('label').innerText.trim();
-      const stored = data[label] + '';
-      Array.from(el.options).forEach(opt => {
-        if (opt.text === stored) opt.selected = true;
-      });
-    }
-  });
-
-  // 3) Re‐run the calculations to update the UI
-  calculateTotal();
-  calculateCosts();
-}
 	
 	// CSV download functionality
 	document.getElementById('downloadCsv').addEventListener('click', () => {
