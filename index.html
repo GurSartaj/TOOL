@@ -173,8 +173,6 @@
 	</button>
   </div>
 	
-	
-
   <!-- Main Form Area -->
   <div class="form-container text-sm max-w-4xl mx-auto mt-12 mb-12">
 	<!-- IR Number & Date inputs -->
@@ -191,12 +189,19 @@
 	  </div>
 
 	  <!-- Date wrapper -->
-	  <div class="flex flex-col">
-		<label for="irDate" class="mb-1 font-semibold">Date</label>
-		<input type="date" id="irDate" name="irDate" class="p-2 border rounded" />
-	  </div>
-	</div>
-
+	    <div class="flex flex-col">
+	      <label for="irDate" class="mb-1 font-semibold">Date</label>
+	      <input type="date" id="irDate" name="irDate" class="p-2 border rounded" />
+	      <button
+	        type="button"
+	        id="useTodaysDateBtn"
+	        class="mt-2 bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded"
+	      >
+	        Use Today’s Date
+	      </button>
+	    </div>
+	  </div>	
+	
     <!-- Title Section -->
     <div class="mb-6 p-4 bg-white dark:bg-gray-700 rounded border border-[var(--panel-border)]">
 		<h1 class="text-2xl font-bold text-center m-0">Proposal Complexity & Opportunity Cost</h1>
@@ -693,11 +698,20 @@
       if (!ir) return alert('Please enter an IR Number to modify.');
 
       // Show fetching status and disable button
+	  fetchStatus.className = 'mt-1 text-sm italic text-red-600';
       fetchStatus.innerText = 'Fetching data…';
       loadBtn.disabled     = true;
 
       // Trigger JSONP load
       loadRecord();
+    });
+	
+	document
+    .getElementById('useTodaysDateBtn')
+    .addEventListener('click', () => {
+      // Format YYYY-MM-DD and set the date input
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('irDate').value = today;
     });
   });
 
@@ -789,7 +803,8 @@ function handleLoad(data) {
 
   if (data.result === 'notfound') {
     // Not found
-    fetchStatus.innerText = `IR ${irVal} not found.`;
+    fetchStatus.className = 'mt-1 text-sm italic text-red-600';
+	fetchStatus.innerText = `IR ${irVal} not found.`;
   } else {
     // 1) Prefill top-level fields
     document.getElementById('irDate').value              = data['Date']               || '';
@@ -821,7 +836,8 @@ function handleLoad(data) {
     calculateCosts();
 
     // 4) Success status
-    fetchStatus.innerText = `Successfully loaded IR ${irVal}!`;
+    fetchStatus.className = 'mt-1 text-sm italic text-green-600';
+	fetchStatus.innerText = `Successfully loaded IR ${irVal}!`;
   }
 
   // Re-enable the button
