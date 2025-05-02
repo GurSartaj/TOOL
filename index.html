@@ -182,7 +182,11 @@
       <div class="flex flex-col">
         <label for="irNumber" class="mb-1 font-semibold">IR Number</label>
         <input type="text" id="irNumber" name="irNumber" class="p-2 border rounded" />
-      </div>
+        <button type="button" id="loadBtn"
+				class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded">
+			Load Case
+		</button>
+	  </div>
       <div class="flex flex-col">
         <label for="irDate" class="mb-1 font-semibold">Date</label>
         <input type="date" id="irDate" name="irDate" class="p-2 border rounded" />
@@ -736,6 +740,60 @@ async function onSubmit() {
     btn.disabled = false;
     btn.innerText = 'Submit';
   }
+}
+
+// ── Load an existing case by IR (using JSONP) ──
+document.getElementById('loadBtn').addEventListener('click', loadRecord);
+
+function loadRecord() {
+  const ir = document.getElementById('irNumber').value.trim();
+  if (!ir) return alert('Please enter an IR Number to load.');
+
+  // Remove any previous JSONP <script>
+  const prev = document.getElementById('jsonpLoad');
+  if (prev) prev.remove();
+
+  // Inject new <script> tag for JSONP callback=handleLoad
+  const s = document.createElement('script');
+  s.id  = 'jsonpLoad';
+  s.src = `${GOOGLE_SHEET_URL}?ir=${encodeURIComponent(ir)}&callback=handleLoad`;
+  document.head.appendChild(s);
+}
+
+// JSONP callback: receives either the row data or { result:'notfound' }
+function handleLoad(data) {
+  if (data.result === 'notfound') {
+    return alert(`No record found for IR ${document.getElementById('irNumber').value}.`);
+  }
+
+  // 1) Prefill the top‐level fields
+  document.getElementById('irDate').value              = data['Date']              || '';
+  document.getElementById('weeks').value               = data['Weeks']             || '';
+  document.getElementById('gp').value                  = data['GP Threshold']      || '';
+  document.getElementById('vertical').value            = data['Vertical']          || '';
+  document.getElementById('totalScore').innerText      = data['Initial Score']     || '0';
+  document.getElementById('salesforceScore').innerText = data['Salesforce Score']  || '0';
+  document.getElementById('costTotal').innerText       = data['Potential Opp Cost']|| '0';
+
+  // 2) For each dynamically‐generated score item, match by label
+  document.querySelectorAll('.score-item').forEach(el => {
+    let label;
+    if (el.type === 'checkbox') {
+      label = el.closest('label').querySelector('span').innerText.trim();
+      el.checked = parseFloat(data[label]||0) > 0;
+    } else {
+      const wrap   = el.closest('div');
+      label        = wrap.querySelector('label').innerText.trim();
+      const stored = data[label] + '';
+      Array.from(el.options).forEach(opt => {
+        if (opt.text === stored) opt.selected = true;
+      });
+    }
+  });
+
+  // 3) Re‐run the calculations to update the UI
+  calculateTotal();
+  calculateCosts();
 }
 	
 	// CSV download functionality
