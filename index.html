@@ -184,8 +184,9 @@
         <input type="text" id="irNumber" name="irNumber" class="p-2 border rounded" />
         <button type="button" id="loadBtn"
 				class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded">
-			Load Case
+			Modify Existing IR
 		</button>
+	      	<div id="fetchStatus" class="mt-1 text-sm italic text-gray-600">
 	  </div>
       <div class="flex flex-col">
         <label for="irDate" class="mb-1 font-semibold">Date</label>
@@ -678,6 +679,22 @@
 
     // Bind Submit here
     document.getElementById('submitBtn').addEventListener('click', onSubmit);
+      // Cache the new elements
+    const loadBtn     = document.getElementById('loadBtn');
+    const fetchStatus = document.getElementById('fetchStatus');
+
+    // Modify Existing IR button behavior
+    loadBtn.addEventListener('click', () => {
+      const ir = document.getElementById('irNumber').value.trim();
+      if (!ir) return alert('Please enter an IR Number to modify.');
+
+      // Show fetching status and disable button
+      fetchStatus.innerText = 'Fetching data…';
+      loadBtn.disabled     = true;
+
+      // Trigger JSONP load
+      loadRecord();
+    });
   });
 
   // ── 1) Your Apps Script Web App URL ──
@@ -742,8 +759,6 @@ async function onSubmit() {
   }
 }
 
-// ── Load an existing case by IR (using JSONP) ──
-document.getElementById('loadBtn').addEventListener('click', loadRecord);
 
 function loadRecord() {
   const ir = document.getElementById('irNumber').value.trim();
@@ -760,11 +775,17 @@ function loadRecord() {
   document.head.appendChild(s);
 }
 
-// JSONP callback: receives either the row data or { result:'notfound' }
 function handleLoad(data) {
+  // … your population logic …
+
+  // Add this at the very end of handleLoad:
   if (data.result === 'notfound') {
-    return alert(`No record found for IR ${document.getElementById('irNumber').value}.`);
+    fetchStatus.innerText = `IR ${document.getElementById('irNumber').value} not found.`;
+  } else {
+    fetchStatus.innerText = `Successfully loaded IR ${document.getElementById('irNumber').value}!`;
   }
+  loadBtn.disabled = false;
+}
 
   // 1) Prefill the top‐level fields
   document.getElementById('irDate').value              = data['Date']              || '';
