@@ -530,103 +530,127 @@
      */
     function calculateCosts() {
       const st = {};
-      // Capture state of each score-item (checkbox or select)
       document.querySelectorAll('.score-item').forEach(el => {
         st[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
       });
-      const wks = parseInt(document.getElementById('weeks').value) || 0;
 
-      // Calculate legal review hours and cost
+      const wks = parseInt(document.getElementById('weeks').value) || 0;
+      const gp = document.getElementById('gp').value;
+      const uplift = (wks === 1) ? 1.5 : 1;
+
+      let bandHours = 0;
+      if (gp === '<=150K') bandHours = 6;
+      else if (gp === '<=750K') bandHours = 7;
+      else if (gp === '>=750001') bandHours = 11;
+
+      const getCost = bandHours * 85;
+
+      const isServicePricing = st['D23'];
+      const isSOW = st['D24'];
+      let srcCost = 0;
+      let scopingCost = 0;
+
+      if (isServicePricing) {
+        srcCost = bandHours * (isSOW ? 1.5 : 1) * 49.82;
+        const weeklyCost = 15 * 67.31;
+        const upliftedCost = weeklyCost * 1.5;
+        scopingCost = wks === 1
+          ? upliftedCost
+          : wks > 1
+            ? weeklyCost * (wks - 1) + upliftedCost
+            : 0;
+      }
+
+      // Legal review cost
       const hrR = st['D11'] ? 15 : 0, hrN = st['D10'] ? 6 : 0;
-      const baseLeg = hrR * rates.legalRed + hrN * rates.legalNo;
+      const baseLeg = hrR * 65.99 + hrN * 66;
       const totLeg = wks === 1 ? baseLeg * 1.5 : wks > 1 ? baseLeg * (wks - 1) + baseLeg * 1.5 : 0;
 
-      // Finance review cost: flat fee $66 if selected and weeks >= 1
+      // Finance
       const totFin = (st['D14'] && wks >= 1) ? 66 : 0;
 
-      // Insurance and bond cost
-      const totInsBond = (st['D15'] ? 3 : 0) * rates.insurance + (st['D13'] ? 3 : 0) * rates.bond;
+      // Insurance & Bond
+      const totInsBond = (st['D15'] ? 3 : 0) * 35.75 + (st['D13'] ? 3 : 0) * 35.75;
 
-      // Business manager cost
-      const cBM = (st['D25'] ? 5 : 0) * rates.businessManager;
+      // Business Manager
+      const cBM = (st['D25'] ? 5 : 0) * 67.31;
       const totBM = wks === 1 ? cBM * 1.5 : wks > 1 ? cBM * (wks - 1) + cBM * 1.5 : 0;
 
-      // Services consultant cost
-      const cSC = (st['D23'] ? 15 : 0) * rates.servicesConsultant;
+      // Services Consultant (already included in scoping if Service Pricing)
+      const cSC = (!isServicePricing && st['D23'] ? 15 : 0) * 67.31;
       const totSC = wks === 1 ? cSC * 1.5 : wks > 1 ? cSC * (wks - 1) + cSC * 1.5 : 0;
 
-      // Determine GP band for SRC and GET calculations
-      let band = 0;
-      const gp = document.getElementById('gp').value;
-      if (gp === '<=150K') band = 6;
-      else if (gp === '<=750K') band = 7;
-      else if (gp === '>=750001') band = 11;
-      const totSRC = band * rates.SRC, totGET = band * rates.GET;
-
-      // Service category weekly costs
-      let totSvcCats = 0;
-      sections[2].items.forEach((lbl,i) => {
-        if (st[`D${33+i}`]) {
-          const weekly = 15 * (svcRates[lbl]||0);
-          totSvcCats += wks===1 ? weekly*1.5 : wks>1 ? weekly*wks : 0;
-        }
-      });
-
-      // Technology practice weekly costs
-      let totTech = 0;
-      sections[4].items.forEach((lbl,i) => {
-        if (st[`D${58+i}`]) {
-          const weekly = 15 * (techRates[lbl]||0);
-          totTech += wks===1 ? weekly*1.5 : wks>1 ? weekly*wks : 0;
-        }
-      });
-
-      // Proposal team cost based on selected vertical and weeks
-      const vert = document.getElementById('vertical').value;
-      const rateMap = { Federal:50, SLED:50, Commercial:50 };
-      // Proposal team cost: dynamic hours per vertical × $50 rate
-      let baseHours = 0;
-      if (vert === 'Federal') baseHours = 12;
-      else if (vert === 'SLED') baseHours = 16.66;
-      else if (vert === 'Commercial') baseHours = 13.33;
-      const hoursProp = wks === 1
-        ? baseHours * 1.5
-        : wks > 1
-          ? baseHours * (wks - 1) + baseHours * 1.5
-          : 0;
-      const totPropTeam = Math.round(hoursProp * 50);
-
-      // Hard copy printing cost
-      const totHardCopy = (parseInt(st['H75']||0)) * rates.hardCopy;
-
-      // Combine all buckets into a summary and grand total
-      const buckets = {
-        'Legal Cost': totLeg,
-        'Finance Cost': totFin,
-        'Insurance & Bond': totInsBond,
-        'Business Manager': totBM,
-        'Services Consultant': totSC,
-        'SRC': totSRC,
-        'GET': totGET,
-        'Service Categories': totSvcCats,
-        'Technology Practice': totTech,
-        'Proposal Team': totPropTeam,
-        'Hard Copy': totHardCopy
+      // Service Categories cost
+      const svcRates = {
+        'Application Services':85,'Consulting Services':85,'Infrastructure Services':50,
+        'Lab (ATC) Services':85,'Strategic Staffing Services':68,'Integration Center (xIC) Services':68,
+        'Software Asset Management':85,'SMARTnet/Maintenance':50,'ServiceNow':42,
+        'Supply Chain - Staging & Integration Services':68,'Infra Services - Multi-Site Delivery Services':50,
+        'Hardware VAR':1,'Software VAR':1
       };
+      let totSvcCats = 0;
+      const svcItems = sections[2].items;
+      svcItems.forEach((item, i) => {
+        const key = `D${33 + i}`;
+        const label = typeof item === 'string' ? item : item.label;
+        if (st[key]) {
+          const weekly = 15 * (svcRates[label] || 0);
+          totSvcCats += wks === 1 ? weekly * 1.5 : wks > 1 ? weekly * wks : 0;
+        }
+      });
+
+      // Technology Practice cost
+      const techRates = {
+        'Automation & Orchestration':85,'Cloud':85,'Data Center':85,'Digital Workspace':85,
+        'Environmental, Social & Governance (ESG)':85,'Mobility':85,'Networking':85,'Security Transformation':85
+      };
+      let totTech = 0;
+      const techItems = sections[4].items;
+      techItems.forEach((item, i) => {
+        const key = `D${58 + i}`;
+        if (st[key]) {
+          const weekly = 15 * (techRates[item] || 0);
+          totTech += wks === 1 ? weekly * 1.5 : wks > 1 ? weekly * wks : 0;
+        }
+      });
+
+      // Proposal Team cost
+      let totPropTeam = 0;
+      const vert = document.getElementById('vertical').value;
+      if (wks > 0 && vert) {
+        const baseHours = vert === 'Federal' ? 12 : vert === 'SLED' ? 16.66 : 13.33;
+        const hoursProp = (wks === 1)
+          ? baseHours * 1.5
+          : baseHours * (wks - 1) + baseHours * 1.5;
+        totPropTeam = Math.round(hoursProp * 50);
+      }
+
+      // Hard Copy cost
+      const totHardCopy = (parseInt(st['H75'] || 0)) * 88;
+
+      const buckets = {
+        'Legal Cost': totLeg || 0,
+        'Finance Cost': totFin || 0,
+        'Insurance & Bond': totInsBond || 0,
+        'Business Manager': totBM || 0,
+        'Services Consultant': (isServicePricing ? scopingCost : totSC) || 0,
+        'GET': getCost || 0,
+        'SRC': srcCost || 0,
+            'Service Categories': totSvcCats || 0,
+        'Technology Practice': totTech || 0,
+        'Proposal Team': totPropTeam || 0,
+        'Hard Copy': totHardCopy || 0
+      };
+
       let grand = 0;
-      const cbDiv = document.getElementById('costBreakdown'); cbDiv.innerHTML = '';
-      // Render each cost category in the sidebar and sum up for grand total
-	// Render each cost category as a table row
-      Object.entries(buckets).forEach(([k,v]) => {
-        cbDiv.insertAdjacentHTML('beforeend',
-          `<tr>
-             <td class="py-1">${k}</td>
-             <td class="py-1 text-right">$${v.toFixed(2)}</td>
-           </tr>`
-        );
-        // Include all costs except Proposal Team in potential opp cost
+      const cbDiv = document.getElementById('costBreakdown');
+      cbDiv.innerHTML = '';
+
+      Object.entries(buckets).forEach(([k, v]) => {
+        cbDiv.insertAdjacentHTML('beforeend', `<tr><td class="py-1">${k}</td><td class="py-1 text-right">$${v.toFixed(2)}</td></tr>`);
         grand += v;
       });
+
       document.getElementById('costTotal').innerText = grand.toFixed(2);
     }
 
