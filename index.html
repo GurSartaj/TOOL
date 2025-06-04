@@ -543,7 +543,13 @@
       else if (gp === '<=750K') bandHours = 7;
       else if (gp === '>=750001') bandHours = 11;
 
-      const getCost = bandHours * 85;
+      let hasTechPractice = false;
+      sections[4].items.forEach((item, i) => {
+        const key = `D${58 + i}`;
+        if (st[key]) hasTechPractice = true;
+      });
+      const getCost = hasTechPractice ? bandHours * 85 : 0;
+
 
       const isServicePricing = st['D23'];
       const isSOW = st['D24'];
